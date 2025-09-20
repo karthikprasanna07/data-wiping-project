@@ -16,7 +16,7 @@ function App() {
   }, []);
 
   const handleCheckbox = (mountpoint) => {
-    setSelectedDevices(prev => 
+    setSelectedDevices(prev =>
       prev.includes(mountpoint)
         ? prev.filter(d => d !== mountpoint)
         : [...prev, mountpoint]
@@ -33,8 +33,12 @@ function App() {
 
   return (
     <Box className="app-container">
-      <Typography variant="h4">USB Data Wiper</Typography>
+      {/* Title */}
+      <Typography variant="h4" className="app-title">
+        WipeX
+      </Typography>
 
+      {/* Device list OR progress */}
       {!wipingDevices ? (
         <Box mt={4} className="device-list">
           <Typography variant="h6">Select device(s) to wipe:</Typography>
@@ -52,21 +56,27 @@ function App() {
               />
             </Box>
           ))}
-
-          <Button
-            variant="contained"
-            color="error"
-            onClick={handleWipe}
-            className="wipe-button"
-          >
-            Wipe
-          </Button>
         </Box>
       ) : (
         <WipeProgress devices={wipingDevices} />
       )}
 
-      <Box className="app-footer">© 2025 WipeX Prototype</Box>
+      {/* Floating wipe button - bottom right */}
+      <Button
+        variant="contained"
+        color="error"
+        onClick={handleWipe}
+        className="wipe-button"
+      >
+        Wipe
+      </Button>
+
+      {/* Footer */}
+      <Box
+        className="app-footer"
+      >
+        <Typography variant="body2">© 2025 WipeX Prototype</Typography>
+      </Box>
     </Box>
   );
 }
