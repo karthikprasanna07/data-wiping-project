@@ -5,13 +5,18 @@ import platform
 import os
 import datetime
 from reportlab.pdfgen import canvas
-import string
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.lib import colors
+from reportlab.lib.utils import ImageReader
 from ctypes import windll
+import string
 import time
 import json
+import qrcode
+from io import BytesIO
 
 app = Flask(__name__)
-# Allow CORS for React frontend
 CORS(app, supports_credentials=True)
 
 # ------------------------------
@@ -47,7 +52,6 @@ def detect_all_devices():
 # Secure File Wipe Function
 # ------------------------------
 def wipe_file(path, passes=3):
-    """Overwrite and delete a single file."""
     try:
         if not os.path.isfile(path):
             return False, f"{path} is not a file"
@@ -63,6 +67,7 @@ def wipe_file(path, passes=3):
             f.write(b"\x00" * length)
             f.flush()
             os.fsync(f.fileno())
+
         os.remove(path)
         return True, f"Wiped {path} with {passes} passes"
     except Exception as e:
@@ -73,10 +78,13 @@ def wipe_file(path, passes=3):
 # ------------------------------
 @app.route("/devices", methods=["GET"])
 def list_devices():
-    return jsonify(detect_all_devices())
+    try:
+        return jsonify(detect_all_devices())
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # ------------------------------
-# SSE Wipe Route (Real-Time Progress)
+# SSE Wipe Route
 # ------------------------------
 @app.route("/wipe_stream", methods=["GET"])
 def wipe_stream():
@@ -86,14 +94,12 @@ def wipe_stream():
     if not mountpoint or not os.path.exists(mountpoint):
         return jsonify({"status": "error", "message": "Invalid device"}), 400
 
-    # Count all files
     all_files = []
     for root, dirs, files in os.walk(mountpoint):
         for file in files:
             all_files.append(os.path.join(root, file))
     total_files = len(all_files)
 
-    # SSE generator
     def generate():
         wiped_files = 0
         results = []
@@ -104,26 +110,66 @@ def wipe_stream():
             wiped_files += 1
             progress = int((wiped_files / total_files) * 100) if total_files else 100
 
-            # Stream progress
             yield f"data: {json.dumps({'progress': progress, 'file': filepath})}\n\n"
-            time.sleep(0.05)  # small delay for smooth SSE
+            time.sleep(0.05)
 
-        # Generate PDF certificate at the end
+        # ----------------- PDF Certificate -----------------
         cert_file = f"certificate_{os.path.basename(mountpoint.strip(':\\'))}.pdf"
-        c = canvas.Canvas(cert_file)
-        c.drawString(100, 750, "Data Wiping Certificate")
-        c.drawString(100, 720, f"Device: {mountpoint}")
-        c.drawString(100, 700, f"Date: {datetime.datetime.now()}")
-        c.drawString(100, 680, f"Passes: {passes}")
-        c.drawString(100, 660, f"Files wiped: {len(results)}")
-        c.drawString(100, 640, "Wipe method: Multi-pass overwrite + delete")
+        c = canvas.Canvas(cert_file, pagesize=A4)
+        width, height = A4
+
+        # Header
+        c.setFont("Helvetica-Bold", 24)
+        c.setFillColor(colors.darkblue)
+        c.drawCentredString(width / 2, height - 40*mm, "Data Wiping Certificate")
+
+        # Device info
+        c.setFont("Helvetica", 12)
+        c.setFillColor(colors.black)
+        info_y = height - 60*mm
+        line_height = 16
+        c.drawString(25*mm, info_y, f"Device: {mountpoint}")
+        info_y -= line_height
+        c.drawString(25*mm, info_y, f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        info_y -= line_height
+        c.drawString(25*mm, info_y, f"Passes: {passes}")
+        info_y -= line_height
+        c.drawString(25*mm, info_y, f"Files wiped: {len(results)}")
+        info_y -= line_height
+        c.drawString(25*mm, info_y, "Wipe Method: Multi-pass overwrite + delete")
+        info_y -= line_height
+
+        # Warning
+        c.setFillColor(colors.red)
+        c.setFont("Helvetica-Oblique", 10)
+        c.drawString(25*mm, info_y, "Note: This data wipe is permanent and non-recoverable.")
+
+        # QR code for verification
+        qr_data = f"http://127.0.0.1:5000/certificate/{cert_file}"
+        qr_img = qrcode.make(qr_data)
+        buf = BytesIO()
+        qr_img.save(buf, format="PNG")
+        buf.seek(0)
+        qr_reader = ImageReader(buf)
+        c.drawImage(qr_reader, width - 60*mm, height - 100*mm, 50*mm, 50*mm)  # moves QR lower
+
+
+        # Footer
+        c.setFillColor(colors.darkgrey)
+        c.setFont("Helvetica", 10)
+        c.drawCentredString(width / 2, 15*mm, "Verified by WipeX Secure Wiping System")
+
+        c.showPage()
         c.save()
 
-        # Final event
+        # Final SSE
         yield f"data: {json.dumps({'progress': 100, 'certificate': cert_file, 'done': True})}\n\n"
 
     return Response(generate(), mimetype="text/event-stream")
 
+# ------------------------------
+# Certificate Download
+# ------------------------------
 @app.route("/certificate/<name>", methods=["GET"])
 def download_certificate(name):
     if not os.path.exists(name):
