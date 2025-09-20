@@ -1,6 +1,6 @@
 /* General container */
 .app-container {
-  max-width: 800px;
+  max-width: 110%;
   margin: 0 auto;
   padding: 20px;
   font-family: "Roboto", sans-serif;
@@ -11,6 +11,7 @@
   color: #1a237e;
   margin-bottom: 20px;
   font-weight: 600;
+  text-align: center;
 }
 
 /* Device list card */
@@ -91,4 +92,24 @@
   color: #555;
   text-align: center;
   margin-top: 30px;
+  padding-bottom: 10px;
 }
+.wipe-button {
+  position: fixed;
+  bottom: 20px;
+  top: 10px;
+  left: 93%;
+  z-index: 1000;
+  width: 100px;
+}
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;          /* stick to very left edge */
+  width: 100%;      /* stretch full width of viewport */
+  background-color: #e0e0e0;
+  padding: 8px;
+  text-align: center;
+  z-index: 999;     /* stay above main content */
+}
+
