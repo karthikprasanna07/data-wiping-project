@@ -1,38 +1,94 @@
-.App {
-  text-align: center;
+/* General container */
+.app-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: "Roboto", sans-serif;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* Headings */
+.MuiTypography-h4 {
+  color: #1a237e;
+  margin-bottom: 20px;
+  font-weight: 600;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+/* Device list card */
+.device-list {
+  position: relative;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+/* Each device row */
+.device-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s;
+}
+.device-item:last-child {
+  border-bottom: none;
+}
+.device-item:hover {
+  background-color: #f9f9f9;
+}
+
+/* Small floating wipe button */
+.wipe-button {
+  position: fixed; /* stays at bottom-right of page */
+  bottom: 25px;
+  right: 25px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  background-color: #e53935 !important;
+  color: #fff !important;
+  border-radius: 6px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.wipe-button:hover {
+  background-color: #b71c1c !important;
+  transform: translateY(-2px);
+}
+
+/* Wipe Progress container */
+.wipe-progress-container {
+  margin-top: 40px;
+  background-color: #ffffff;
+  padding: 30px 20px;
+  border-radius: 10px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
 }
 
-.App-link {
-  color: #61dafb;
+/* Certificates button */
+.certificate-button {
+  margin-top: 15px !important;
+  font-size: 0.85rem;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* Circular progress */
+.MuiCircularProgress-root {
+  margin-top: 20px;
+}
+
+/* Footer */
+.app-footer {
+  font-size: 0.9rem;
+  color: #555;
+  text-align: center;
+  margin-top: 30px;
 }
