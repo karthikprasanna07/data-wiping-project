@@ -38,6 +38,7 @@
   padding: 12px;
   border-bottom: 1px solid #eee;
   transition: background 0.2s;
+  cursor: pointer !important;
 }
 .device-item:last-child {
   border-bottom: none;
@@ -45,7 +46,10 @@
 .device-item:hover {
   background-color: #f9f9f9;
 }
-
+.device-item.selected {
+  background: linear-gradient(90deg, #ff4b2b, #ff416c) !important;
+  color: #fff !important;
+}
 /* Small floating wipe button */
 .wipe-button {
   position: fixed; /* stays at bottom-right of page */
@@ -226,10 +230,34 @@
   margin: 0;   /* remove gap */
   left: 0;
   right: 0;
+    background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   
 }
 body, html {
   margin: 0;
   padding: 0;
   width: 100%;
+}
+
+.wipe-button {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  padding: 16px 28px;
+  font-size: 18px;
+  border-radius: 50px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+  background: linear-gradient(90deg, #ff4b2b, #ff416c);
+}
+.wipe-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px rgba(0,0,0,0.4);
+}
+.MuiDialog-paper {
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  background: rgba(20,20,20,0.85);
+  color: #fff;
 }
