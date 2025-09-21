@@ -78,16 +78,23 @@ function App() {
           {devices.length === 0 && <Typography>No devices detected</Typography>}
 
           {devices.map((d, idx) => (
-            <Box key={idx} className="device-item">
+            <Box
+              key={idx}
+              className="device-item"
+              onClick={() => handleCheckbox(d.mountpoint)} // row click toggles
+              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+            >
               <Typography>
                 {d.device} → Mounted at {d.mountpoint} ({d.fstype})
               </Typography>
               <Checkbox
                 checked={selectedDevices.includes(d.mountpoint)}
-                onChange={() => handleCheckbox(d.mountpoint)}
+                onChange={(e) => handleCheckbox(d.mountpoint)}
+                onClick={(e) => e.stopPropagation()} // prevents double toggle when clicking checkbox
               />
             </Box>
           ))}
+
         </Box>
       ) : (
         <WipeProgress devices={wipingDevices} />
