@@ -84,36 +84,51 @@ def list_devices():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ------------------------------
-# SSE Wipe Route
+# SSE Wipe Route with ETA
 # ------------------------------
 @app.route("/wipe_stream", methods=["GET"])
 def wipe_stream():
+    # --- Capture request arguments immediately ---
     mountpoint = request.args.get("mountpoint")
     passes = int(request.args.get("passes", 3))
 
     if not mountpoint or not os.path.exists(mountpoint):
         return jsonify({"status": "error", "message": "Invalid device"}), 400
 
+    # --- Collect all files to wipe ---
     all_files = []
     for root, dirs, files in os.walk(mountpoint):
         for file in files:
             all_files.append(os.path.join(root, file))
     total_files = len(all_files)
 
+    # --- SSE generator ---
     def generate():
         wiped_files = 0
         results = []
+        start_time = time.time()
 
         for filepath in all_files:
             success, msg = wipe_file(filepath, passes)
+            if not success:
+                print(f"Could not wipe {filepath}: {msg}")
             results.append({"file": filepath, "status": success, "message": msg})
             wiped_files += 1
             progress = int((wiped_files / total_files) * 100) if total_files else 100
 
-            yield f"data: {json.dumps({'progress': progress, 'file': filepath})}\n\n"
+          # --- ETA calculation ---
+            elapsed = time.time() - start_time
+            avg_time_per_file = elapsed / wiped_files if wiped_files > 0 else 0
+            remaining_files = total_files - wiped_files
+            eta_seconds = avg_time_per_file * remaining_files   # use this, not overwritten
+            eta = eta_seconds  # keep as float, let frontend handle rounding
+
+
+            # --- Send progress + ETA ---
+            yield f"data: {json.dumps({'progress': progress, 'file': filepath, 'eta': eta})}\n\n"
             time.sleep(0.05)
 
-        # ----------------- PDF Certificate -----------------
+        # --- Generate PDF Certificate ---
         cert_file = f"certificate_{os.path.basename(mountpoint.strip(':\\'))}.pdf"
         c = canvas.Canvas(cert_file, pagesize=A4)
         width, height = A4
@@ -136,7 +151,7 @@ def wipe_stream():
         info_y -= line_height
         c.drawString(25*mm, info_y, f"Files wiped: {len(results)}")
         info_y -= line_height
-        c.drawString(25*mm, info_y, "Wipe Method: Multi-pass overwrite + delete")
+        c.drawString(25*mm, info_y, "Wipe Method: Multi-pass overwrite")
         info_y -= line_height
 
         # Warning
@@ -144,15 +159,14 @@ def wipe_stream():
         c.setFont("Helvetica-Oblique", 10)
         c.drawString(25*mm, info_y, "Note: This data wipe is permanent and non-recoverable.")
 
-        # QR code for verification
+        # QR code
         qr_data = f"http://127.0.0.1:5000/certificate/{cert_file}"
         qr_img = qrcode.make(qr_data)
         buf = BytesIO()
         qr_img.save(buf, format="PNG")
         buf.seek(0)
         qr_reader = ImageReader(buf)
-        c.drawImage(qr_reader, width - 60*mm, height - 100*mm, 50*mm, 50*mm)  # moves QR lower
-
+        c.drawImage(qr_reader, width - 60*mm, height - 100*mm, 50*mm, 50*mm)
 
         # Footer
         c.setFillColor(colors.darkgrey)
@@ -162,7 +176,7 @@ def wipe_stream():
         c.showPage()
         c.save()
 
-        # Final SSE
+        # --- Final SSE with done flag ---
         yield f"data: {json.dumps({'progress': 100, 'certificate': cert_file, 'done': True})}\n\n"
 
     return Response(generate(), mimetype="text/event-stream")
