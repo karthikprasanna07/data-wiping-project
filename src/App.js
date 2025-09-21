@@ -1,12 +1,31 @@
 import React, { useEffect, useState } from "react";
 import WipeProgress from "./WipeProgress";
-import { Box, Button, Checkbox, Typography } from "@mui/material";
+import {
+  AppBar,
+  Toolbar,
+  IconButton,
+  Typography,
+  Box,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  FormControlLabel
+} from "@mui/material";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import SettingsIcon from "@mui/icons-material/Settings";
+import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import "./App.css";
 
 function App() {
   const [devices, setDevices] = useState([]);
   const [selectedDevices, setSelectedDevices] = useState([]);
   const [wipingDevices, setWipingDevices] = useState(null);
+  const [openWarning, setOpenWarning] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
     fetch("http://127.0.0.1:5000/devices")
@@ -23,20 +42,33 @@ function App() {
     );
   };
 
-  const handleWipe = () => {
+  const handleOpenWarning = () => {
     if (selectedDevices.length === 0) {
       alert("Select at least one device!");
       return;
     }
+    setOpenWarning(true);
+  };
+
+  const handleProceedWipe = () => {
+    setOpenWarning(false);
     setWipingDevices(selectedDevices);
+    setConfirmed(false);
   };
 
   return (
     <Box className="app-container">
-      {/* Title */}
-      <Typography variant="h4" className="app-title">
-        WipeX
-      </Typography>
+      {/* Top Bar */}
+      <AppBar position="static" className="topbar">
+        <Toolbar>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            WipeX
+          </Typography>
+          <IconButton color="inherit"><HelpOutlineIcon /></IconButton>
+          <IconButton color="inherit"><SettingsIcon /></IconButton>
+          <IconButton color="inherit"><PowerSettingsNewIcon /></IconButton>
+        </Toolbar>
+      </AppBar>
 
       {/* Device list OR progress */}
       {!wipingDevices ? (
@@ -61,19 +93,61 @@ function App() {
         <WipeProgress devices={wipingDevices} />
       )}
 
-      {/* Floating wipe button - bottom right */}
-      <Button
-        variant="contained"
-        color="error"
-        onClick={handleWipe}
-        className="wipe-button"
-      >
-        Wipe
-      </Button>
+      {/* Floating wipe button */}
+      {!wipingDevices && (
+        <Button
+          variant="contained"
+          color="error"
+          onClick={handleOpenWarning}
+          className="wipe-button"
+        >
+          Wipe
+        </Button>
+      )}
+
+      {/* Warning Dialog */}
+      <Dialog open={openWarning} onClose={() => setOpenWarning(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>⚠️ Confirm Data Wipe</DialogTitle>
+        <DialogContent>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Warning: This action is <b>permanent</b>. All data on the selected
+            device(s) will be <b>unrecoverable</b>.
+          </Alert>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+              />
+            }
+            label="I understand that this action cannot be undone"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenWarning(false)}>Cancel</Button>
+          <Button
+            onClick={handleProceedWipe}
+            color="error"
+            variant="contained"
+            disabled={!confirmed}
+          >
+            Proceed Wipe
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Footer */}
       <Box
-        className="app-footer"
+        sx={{
+          bgcolor: "#e0e0e0",
+          p: 1,
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          width: "100%",
+          textAlign: "center",
+        }}
       >
         <Typography variant="body2">© 2025 WipeX Prototype</Typography>
       </Box>
