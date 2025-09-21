@@ -4,6 +4,9 @@
   margin: 0 auto;
   padding: 20px;
   font-family: "Roboto", sans-serif;
+    margin: 0;
+  padding: 0;
+  width: 100%;
 }
 
 /* Headings */
@@ -113,3 +116,120 @@
   z-index: 999;     /* stay above main content */
 }
 
+/* Wipe Progress Container */
+.wipe-progress-container {
+  max-width: 600px;
+  margin: 50px auto;
+  padding: 30px 25px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+  transition: all 0.3s ease;
+}
+
+/* Progress text */
+.wipe-progress-container h5,
+.wipe-progress-container h6 {
+  color: #1a237e;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Circular progress styling */
+.MuiCircularProgress-root {
+  margin-top: 15px;
+  color: #1e88e5; /* blue */
+}
+
+/* Completed devices card */
+.certificate-button {
+  margin-top: 15px !important;
+  font-size: 0.9rem;
+  padding: 10px 18px !important;
+  border-radius: 8px !important;
+  text-transform: none !important;
+  background: linear-gradient(135deg, #43a047, #66bb6a) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.certificate-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+
+/* Optional: subtle animation for progress container */
+.wipe-progress-container {
+  animation: fadeIn 0.6s ease forwards;
+}
+
+@keyframes fadeIn {
+  0% {opacity: 0; transform: translateY(20px);}
+  100% {opacity: 1; transform: translateY(0);}
+}
+
+/* Glassmorphism effect for main containers */
+.device-list,
+.wipe-progress-container {
+  background: rgba(255, 255, 255, 0.4); /* Make the background slightly transparent */
+  backdrop-filter: blur(10px); /* This is the key property for the blurred effect */
+  -webkit-backdrop-filter: blur(10px); /* For Safari support */
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Lighter border for a soft look */
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08); /* A softer, wider shadow */
+}
+
+.device-item {
+  /* ...existing styles... */
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.device-item:hover {
+  background-color: #f5f5f5; /* Keep the background change */
+  transform: translateY(-3px); /* Lifts the item up */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Adds a subtle shadow on hover */
+}
+/* Add a pulsing keyframe animation */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(229, 57, 53, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(229, 57, 53, 0);
+  }
+}
+
+/* Apply the pulse animation to the button */
+.wipe-button {
+  /* ...existing styles... */
+  animation: pulse 1.5s infinite; /* Apply the animation */
+  /* Remove the box-shadow from the button to let the animation create it */
+  box-shadow: none;
+}
+
+.wipe-button:hover {
+  /* ...existing styles... */
+  animation: none; /* Stop the pulse on hover for a cleaner look */
+}
+
+/* Topbar */
+.topbar {
+  background-color: #1a237e; /* deep blue */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    width: 100%;
+  margin: 0;   /* remove gap */
+  left: 0;
+  right: 0;
+  
+}
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
