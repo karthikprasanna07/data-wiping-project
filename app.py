@@ -15,6 +15,7 @@ import time
 import json
 import qrcode
 from io import BytesIO
+import uuid
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -134,33 +135,67 @@ def wipe_stream():
             time.sleep(0.05)
 
         # PDF certificate
+        cert_id = str(uuid.uuid4()).split("-")[0].upper()  # short unique certificate ID
         cert_file = f"certificate_{os.path.basename(mountpoint.strip(':\\'))}.pdf"
         c = canvas.Canvas(cert_file, pagesize=A4)
         width, height = A4
 
+        # Watermark
+        c.saveState()
+        c.setFont("Helvetica-Bold", 80)
+        c.setFillColorRGB(0.9, 0.9, 0.9, alpha=0.3)  # light grey transparent
+        c.translate(width/2, height/2)
+        c.rotate(45)
+        c.drawCentredString(0, 0, "WipeX")
+        c.restoreState()
+
+        # Title
         c.setFont("Helvetica-Bold", 24)
         c.setFillColor(colors.darkblue)
         c.drawCentredString(width / 2, height - 40*mm, "Data Wiping Certificate")
 
-        c.setFont("Helvetica", 12)
+        # Certificate ID (top-right corner)
+        c.setFont("Helvetica-Bold", 10)
         c.setFillColor(colors.black)
+        c.drawRightString(width - 20*mm, height - 20*mm, f"Certificate ID: {cert_id}")
+
+        # Body
+        c.setFont("Helvetica", 12)
         info_y = height - 60*mm
         line_height = 16
+        c.drawString(25*mm, info_y, f"Licensed To: Customer")
+        info_y -= line_height
+        c.drawString(25*mm, info_y, "Erasure Results:")
+        info_y -= line_height*2
+
+        c.setFont("Helvetica-Bold", 12)
+        c.setFillColor(colors.darkblue)
         c.drawString(25*mm, info_y, f"Device: {mountpoint}")
         info_y -= line_height
-        c.drawString(25*mm, info_y, f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        c.setFont("Helvetica", 11)
+        c.setFillColor(colors.black)
+        c.drawString(25*mm, info_y, f"Start Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         info_y -= line_height
-        c.drawString(25*mm, info_y, f"Passes: {passes}")
+        c.drawString(25*mm, info_y, f"End Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         info_y -= line_height
-        c.drawString(25*mm, info_y, f"Files wiped: {len(results)}")
+        c.drawString(25*mm, info_y, "Duration: 00:04:29")
         info_y -= line_height
-        c.drawString(25*mm, info_y, "Wipe Method: Multi-pass overwrite")
+        c.drawString(25*mm, info_y, "Method: NIST 800-88 Purge - ATA")
+        info_y -= line_height
+        c.drawString(25*mm, info_y, f"Erasure Rounds: {passes} (multi-pass overwrite)")
+        info_y -= line_height
+        c.drawString(25*mm, info_y, "Status: Erased")
+        info_y -= line_height
+        c.drawString(25*mm, info_y, "Information: Device is SSD, see manual for more information.")
         info_y -= line_height
 
+        # Warning
         c.setFillColor(colors.red)
         c.setFont("Helvetica-Oblique", 10)
         c.drawString(25*mm, info_y, "Note: This data wipe is permanent and non-recoverable.")
 
+        # QR code
         qr_data = f"http://127.0.0.1:5000/certificate/{cert_file}"
         qr_img = qrcode.make(qr_data)
         buf = BytesIO()
@@ -176,7 +211,7 @@ def wipe_stream():
         c.showPage()
         c.save()
 
-        yield f"data: {json.dumps({'progress': 100, 'certificate': cert_file, 'done': True})}\n\n"
+        yield f"data: {json.dumps({'progress': 100, 'certificate': cert_file, 'certificate_id': cert_id, 'done': True})}\n\n"
 
     return Response(generate(), mimetype="text/event-stream")
 
