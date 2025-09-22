@@ -126,12 +126,7 @@ def verify_otp():
 def wipe_stream():
     mountpoint = request.args.get("mountpoint")
     passes = int(request.args.get("passes", 3))
-    aadhaar = request.args.get("aadhaar", None)
-    if aadhaar and len(aadhaar) == 12 and aadhaar.isdigit():
-        masked_aadhaar = aadhaar[:4] + "XXXX" + aadhaar[-4:]
-    else:
-        masked_aadhaar = "Not Provided"
-
+    aadhaar = request.args.get("aadhaar", "Not Provided")
 
     if not mountpoint or not os.path.exists(mountpoint):
         return jsonify({"status": "error", "message": "Invalid device"}), 400
@@ -189,12 +184,7 @@ def wipe_stream():
 
         info_y = height - 60*mm
         line_height = 16
-        aadhaar = request.args.get("aadhaar", None)
-        if aadhaar and len(aadhaar) == 12 and aadhaar.isdigit():
-            masked_aadhaar = aadhaar[:4] + "XXXX" + aadhaar[-4:]
-        else:
-            masked_aadhaar = "Not Provided"
-
+        masked_aadhaar = aadhaar[:4] + "XXXX" + aadhaar[-4:] if len(aadhaar) == 12 else aadhaar
         c.setFont("Helvetica", 12)
         c.drawString(25*mm, info_y, f"Wipe Performed By (Aadhaar): {masked_aadhaar}")
         info_y -= line_height
@@ -262,3 +252,4 @@ def download_certificate(name):
 # ------------------------------
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)
+
