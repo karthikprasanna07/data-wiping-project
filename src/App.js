@@ -61,12 +61,19 @@ function App() {
       {/* Top Bar */}
       <AppBar position="static" className="topbar">
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            WipeX
-          </Typography>
-          <IconButton color="inherit"><HelpOutlineIcon /></IconButton>
-          <IconButton color="inherit"><SettingsIcon /></IconButton>
-          <IconButton color="inherit"><PowerSettingsNewIcon /></IconButton>
+          <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
+            <img
+              src="/logobg.png" // adjust path based on where you store it
+              alt="logo"
+              style={{ height: "50px", marginRight: "8px" }}
+            />
+            <Typography variant="h6" sx={{ flexGrow: 1 }}>
+              WipeX
+            </Typography>
+          </Box>
+            <IconButton color="inherit"><HelpOutlineIcon /></IconButton>
+            <IconButton color="inherit"><SettingsIcon /></IconButton>
+            <IconButton color="inherit"><PowerSettingsNewIcon /></IconButton>
         </Toolbar>
       </AppBar>
 
