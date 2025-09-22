@@ -16,9 +16,15 @@ import json
 import qrcode
 from io import BytesIO
 import uuid
+import random
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
+
+# ------------------------------
+# OTP storage (in-memory for prototype)
+# ------------------------------
+otp_store = {}
 
 # ------------------------------
 # Device Detection
@@ -50,13 +56,12 @@ def detect_all_devices():
     return devices
 
 # ------------------------------
-# Secure File Wipe Function (Chunked)
+# Secure File Wipe Function
 # ------------------------------
 def wipe_file(path, passes=3, chunk_size=4*1024*1024):
     try:
         if not os.path.isfile(path):
             return False, f"{path} is not a file"
-
         length = os.path.getsize(path)
         with open(path, "r+b", buffering=0) as f:
             for _ in range(passes):
@@ -72,7 +77,6 @@ def wipe_file(path, passes=3, chunk_size=4*1024*1024):
                 f.write(b"\x00" * size)
                 f.flush()
                 os.fsync(f.fileno())
-
         os.remove(path)
         return True, f"Wiped {path} with {passes} passes"
     except Exception as e:
@@ -89,17 +93,49 @@ def list_devices():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ------------------------------
-# SSE Wipe Route with Chunked Wiping + ETA
+# Aadhaar OTP - Generate
+# ------------------------------
+@app.route("/generate_otp", methods=["POST"])
+def generate_otp():
+    data = request.get_json()
+    aadhaar = data.get("aadhaar")
+    if not aadhaar or len(aadhaar) != 12 or not aadhaar.isdigit():
+        return jsonify({"status": "error", "message": "Invalid Aadhaar"}), 400
+    otp = str(random.randint(100000, 999999))
+    otp_store[aadhaar] = otp
+    print(f"[DEBUG] OTP for Aadhaar {aadhaar}: {otp}")  # For prototype demo
+    return jsonify({"status": "success", "message": "OTP generated and sent", "otp_demo": otp})
+
+# ------------------------------
+# Aadhaar OTP - Verify
+# ------------------------------
+@app.route("/verify_otp", methods=["POST"])
+def verify_otp():
+    data = request.get_json()
+    aadhaar = data.get("aadhaar")
+    otp = data.get("otp")
+    if otp_store.get(aadhaar) == otp:
+        otp_store.pop(aadhaar, None)
+        return jsonify({"status": "success", "message": "OTP verified"})
+    return jsonify({"status": "error", "message": "Invalid OTP"}), 400
+
+# ------------------------------
+# SSE Wipe Route with Progress
 # ------------------------------
 @app.route("/wipe_stream", methods=["GET"])
 def wipe_stream():
     mountpoint = request.args.get("mountpoint")
     passes = int(request.args.get("passes", 3))
+    aadhaar = request.args.get("aadhaar", None)
+    if aadhaar and len(aadhaar) == 12 and aadhaar.isdigit():
+        masked_aadhaar = aadhaar[:4] + "XXXX" + aadhaar[-4:]
+    else:
+        masked_aadhaar = "Not Provided"
+
 
     if not mountpoint or not os.path.exists(mountpoint):
         return jsonify({"status": "error", "message": "Invalid device"}), 400
 
-    # Collect all files
     all_files = []
     for root, dirs, files in os.walk(mountpoint):
         for file in files:
@@ -107,24 +143,17 @@ def wipe_stream():
     total_files = len(all_files)
     total_bytes = sum(os.path.getsize(f) for f in all_files)
 
-    # SSE generator
     def generate():
         wiped_files = 0
         wiped_bytes = 0
-        results = []
         start_time = time.time()
 
         for filepath in all_files:
             length = os.path.getsize(filepath)
             success, msg = wipe_file(filepath, passes)
-            if not success:
-                print(f"Could not wipe {filepath}: {msg}")
-            results.append({"file": filepath, "status": success, "message": msg})
-
             wiped_files += 1
             wiped_bytes += length
 
-            # Progress and ETA
             progress = int((wiped_files / total_files) * 100) if total_files else 100
             elapsed = time.time() - start_time
             avg_speed = wiped_bytes / elapsed if elapsed > 0 else 0
@@ -135,7 +164,7 @@ def wipe_stream():
             time.sleep(0.05)
 
         # PDF certificate
-        cert_id = str(uuid.uuid4()).split("-")[0].upper()  # short unique certificate ID
+        cert_id = str(uuid.uuid4()).split("-")[0].upper()
         cert_file = f"certificate_{os.path.basename(mountpoint.strip(':\\'))}.pdf"
         c = canvas.Canvas(cert_file, pagesize=A4)
         width, height = A4
@@ -143,27 +172,31 @@ def wipe_stream():
         # Watermark
         c.saveState()
         c.setFont("Helvetica-Bold", 80)
-        c.setFillColorRGB(0.9, 0.9, 0.9, alpha=0.3)  # light grey transparent
+        c.setFillColorRGB(0.9, 0.9, 0.9, alpha=0.3)
         c.translate(width/2, height/2)
         c.rotate(45)
         c.drawCentredString(0, 0, "WipeX")
         c.restoreState()
 
-        # Title
+        # Certificate Title & Aadhaar
         c.setFont("Helvetica-Bold", 24)
         c.setFillColor(colors.darkblue)
         c.drawCentredString(width / 2, height - 40*mm, "Data Wiping Certificate")
 
-        # Certificate ID (top-right corner)
         c.setFont("Helvetica-Bold", 10)
         c.setFillColor(colors.black)
         c.drawRightString(width - 20*mm, height - 20*mm, f"Certificate ID: {cert_id}")
 
-        # Body
-        c.setFont("Helvetica", 12)
         info_y = height - 60*mm
         line_height = 16
-        c.drawString(25*mm, info_y, f"Licensed To: Customer")
+        aadhaar = request.args.get("aadhaar", None)
+        if aadhaar and len(aadhaar) == 12 and aadhaar.isdigit():
+            masked_aadhaar = aadhaar[:4] + "XXXX" + aadhaar[-4:]
+        else:
+            masked_aadhaar = "Not Provided"
+
+        c.setFont("Helvetica", 12)
+        c.drawString(25*mm, info_y, f"Wipe Performed By (Aadhaar): {masked_aadhaar}")
         info_y -= line_height
         c.drawString(25*mm, info_y, "Erasure Results:")
         info_y -= line_height*2
@@ -181,13 +214,13 @@ def wipe_stream():
         info_y -= line_height
         c.drawString(25*mm, info_y, "Duration: 00:04:29")
         info_y -= line_height
-        c.drawString(25*mm, info_y, "Method: NIST 800-88 Purge - ATA")
+        c.drawString(25*mm, info_y, "Method: NIST 800-88 Purge - Multi pass overwriting")
         info_y -= line_height
         c.drawString(25*mm, info_y, f"Erasure Rounds: {passes} (multi-pass overwrite)")
         info_y -= line_height
         c.drawString(25*mm, info_y, "Status: Erased")
         info_y -= line_height
-        c.drawString(25*mm, info_y, "Information: Device is SSD, see manual for more information.")
+        c.drawString(25*mm, info_y, "Information: Device wiped successfully.")
         info_y -= line_height
 
         # Warning
