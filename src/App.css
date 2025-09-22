@@ -224,13 +224,13 @@
 
 /* Topbar */
 .topbar {
-  background-color: #1a237e; /* deep blue */
+  background-color: #f90000; /* deep blue */
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    width: 100%;
+  width: 100%;
   margin: 0;   /* remove gap */
   left: 0;
   right: 0;
-    background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.6);
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   
