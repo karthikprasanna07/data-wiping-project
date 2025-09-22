@@ -155,6 +155,38 @@ function App() {
             Warning: This action is <b>permanent</b>. All data on the selected
             device(s) will be <b>unrecoverable</b>.
           </Alert>
+          {/* List of selected devices */}
+          {/* Styled list of selected devices */}
+          {selectedDevices.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                Devices selected for wiping:
+              </Typography>
+              <Box
+                sx={{
+                  maxHeight: 150,      // limits height if too many devices
+                  overflowY: 'auto',   // adds vertical scroll if needed
+                  border: '1px solid #f44336', // red border to match warning
+                  borderRadius: 1,
+                  p: 1,
+                  backgroundColor: '#ffebee', // light red background
+                }}
+              >
+                {selectedDevices.map((mountpoint, idx) => {
+                  const device = devices.find(d => d.mountpoint === mountpoint);
+                  return (
+                    <Typography
+                      key={idx}
+                      variant="body2"
+                      sx={{ mb: 0.5, fontFamily: 'monospace' }}
+                    >
+                      {device ? `${device.device} → Mounted at ${device.mountpoint} (${device.fstype})` : mountpoint}
+                    </Typography>
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
 
           {/* Step 1: Checkbox */}
           <FormControlLabel
