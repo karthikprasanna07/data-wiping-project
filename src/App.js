@@ -13,7 +13,8 @@ import {
   DialogContent,
   DialogActions,
   Alert,
-  FormControlLabel
+  FormControlLabel,
+  TextField
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -21,6 +22,32 @@ import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import "./App.css";
 
 function App() {
+  const [aadhar, setAadhar] = useState("");
+  const [otp, setOtp] = useState("");
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [verified, setVerified] = useState(false);
+
+  const handleSendOtp = () => {
+    if (aadhar.length !== 12) {
+      alert("Enter a valid 12-digit Aadhaar number");
+      return;
+    }
+    const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedOtp(newOtp);
+    setOtpSent(true);
+    alert(`OTP sent to registered mobile: ${newOtp}`); // For prototype
+  };
+
+  const handleVerifyOtp = () => {
+    if (otp === generatedOtp) {
+      setVerified(true);
+      alert("OTP Verified Successfully!");
+    } else {
+      alert("Invalid OTP. Try again.");
+    }
+  };
+
   const [devices, setDevices] = useState([]);
   const [selectedDevices, setSelectedDevices] = useState([]);
   const [wipingDevices, setWipingDevices] = useState(null);
@@ -71,9 +98,9 @@ function App() {
               WipeX
             </Typography>
           </Box>
-            <IconButton color="inherit"><HelpOutlineIcon /></IconButton>
-            <IconButton color="inherit"><SettingsIcon /></IconButton>
-            <IconButton color="inherit"><PowerSettingsNewIcon /></IconButton>
+          <IconButton color="inherit"><HelpOutlineIcon /></IconButton>
+          <IconButton color="inherit"><SettingsIcon /></IconButton>
+          <IconButton color="inherit"><PowerSettingsNewIcon /></IconButton>
         </Toolbar>
       </AppBar>
 
@@ -120,6 +147,7 @@ function App() {
       )}
 
       {/* Warning Dialog */}
+      {/* Warning Dialog */}
       <Dialog open={openWarning} onClose={() => setOpenWarning(false)} maxWidth="sm" fullWidth>
         <DialogTitle>⚠️ Confirm Data Wipe</DialogTitle>
         <DialogContent>
@@ -128,6 +156,7 @@ function App() {
             device(s) will be <b>unrecoverable</b>.
           </Alert>
 
+          {/* Step 1: Checkbox */}
           <FormControlLabel
             control={
               <Checkbox
@@ -137,17 +166,62 @@ function App() {
             }
             label="I understand that this action cannot be undone"
           />
+
+          {/* Step 2: Aadhaar Input + Get OTP */}
+          {confirmed && (
+            <Box mt={2}>
+              <TextField
+                label="Enter Aadhaar Number"
+                variant="outlined"
+                fullWidth
+                value={aadhar}
+                onChange={(e) => setAadhar(e.target.value)}
+              />
+              <Button
+                variant="contained"
+                sx={{ mt: 1 }}
+                onClick={handleSendOtp}
+              >
+                Get OTP
+              </Button>
+            </Box>
+          )}
+
+          {/* Step 3: OTP Input + Verify */}
+          {otpSent && !verified && (
+            <Box mt={2}>
+              <TextField
+                label="Enter OTP"
+                variant="outlined"
+                fullWidth
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+              />
+              <Button
+                variant="contained"
+                sx={{ mt: 1 }}
+                onClick={handleVerifyOtp}
+              >
+                Verify OTP
+              </Button>
+            </Box>
+          )}
+
+          {/* Step 4: Proceed Wipe */}
+          {verified && (
+            <Box mt={2}>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleProceedWipe}
+              >
+                Proceed Wipe
+              </Button>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenWarning(false)}>Cancel</Button>
-          <Button
-            onClick={handleProceedWipe}
-            color="error"
-            variant="contained"
-            disabled={!confirmed}
-          >
-            Proceed Wipe
-          </Button>
         </DialogActions>
       </Dialog>
 
