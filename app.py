@@ -18,21 +18,47 @@ from io import BytesIO
 import uuid
 import random
 
+# ------------------------------ PDF Signing ------------------------------
+from pyhanko.sign import signers
+from pyhanko.sign.fields import SigFieldSpec, append_signature_field
+from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
+
+def sign_pdf(input_pdf_path, output_pdf_path):
+    # Load signer
+    signer = signers.SimpleSigner.load(
+        cert_file="certs/wipex_cert.pem",
+        key_file="certs/wipex_private.pem",
+        key_passphrase=None  # bytes if encrypted
+    )
+
+    # Open the PDF
+    with open(input_pdf_path, "rb") as infile:
+        writer = IncrementalPdfFileWriter(infile)
+
+        # Append signature field properly
+        append_signature_field(writer, SigFieldSpec("Sig1"))
+
+        # Sign and write
+        with open(output_pdf_path, "wb") as outfile:
+            signers.sign_pdf(
+                writer,
+                signature_meta=signers.PdfSignatureMetadata(field_name="Sig1"),
+                signer=signer,
+                output=outfile
+            )
+
+
+
+# -------------------------------------------------------------------------
+
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
-
-# ------------------------------
-# OTP storage (in-memory for prototype)
-# ------------------------------
 otp_store = {}
 
-# ------------------------------
-# Device Detection
-# ------------------------------
+# ------------------------------ Device Detection ------------------------------
 def detect_all_devices():
     devices = []
     system = platform.system()
-
     for part in psutil.disk_partitions(all=False):
         devices.append({
             "device": part.device,
@@ -40,7 +66,6 @@ def detect_all_devices():
             "fstype": part.fstype,
             "opts": part.opts
         })
-
     if system == "Windows":
         for letter in string.ascii_uppercase:
             mountpoint = letter + ":\\"
@@ -55,9 +80,7 @@ def detect_all_devices():
                     })
     return devices
 
-# ------------------------------
-# Secure File Wipe Function
-# ------------------------------
+# ------------------------------ Secure File Wipe ------------------------------
 def wipe_file(path, passes=3, chunk_size=4*1024*1024):
     try:
         if not os.path.isfile(path):
@@ -82,9 +105,7 @@ def wipe_file(path, passes=3, chunk_size=4*1024*1024):
     except Exception as e:
         return False, f"Error wiping {path}: {e}"
 
-# ------------------------------
-# Flask Routes
-# ------------------------------
+# ------------------------------ Flask Routes ------------------------------
 @app.route("/devices", methods=["GET"])
 def list_devices():
     try:
@@ -92,9 +113,6 @@ def list_devices():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# ------------------------------
-# Aadhaar OTP - Generate
-# ------------------------------
 @app.route("/generate_otp", methods=["POST"])
 def generate_otp():
     data = request.get_json()
@@ -103,12 +121,9 @@ def generate_otp():
         return jsonify({"status": "error", "message": "Invalid Aadhaar"}), 400
     otp = str(random.randint(100000, 999999))
     otp_store[aadhaar] = otp
-    print(f"[DEBUG] OTP for Aadhaar {aadhaar}: {otp}")  # For prototype demo
+    print(f"[DEBUG] OTP for Aadhaar {aadhaar}: {otp}")
     return jsonify({"status": "success", "message": "OTP generated and sent", "otp_demo": otp})
 
-# ------------------------------
-# Aadhaar OTP - Verify
-# ------------------------------
 @app.route("/verify_otp", methods=["POST"])
 def verify_otp():
     data = request.get_json()
@@ -119,9 +134,10 @@ def verify_otp():
         return jsonify({"status": "success", "message": "OTP verified"})
     return jsonify({"status": "error", "message": "Invalid OTP"}), 400
 
-# ------------------------------
-# SSE Wipe Route with Progress
-# ------------------------------
+# ------------------------------ Wipe Stream ------------------------------
+CERT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "certs")
+os.makedirs(CERT_DIR, exist_ok=True)
+
 @app.route("/wipe_stream", methods=["GET"])
 def wipe_stream():
     mountpoint = request.args.get("mountpoint")
@@ -158,98 +174,102 @@ def wipe_stream():
             yield f"data: {json.dumps({'progress': progress, 'file': filepath, 'eta': eta_seconds})}\n\n"
             time.sleep(0.05)
 
-        # PDF certificate
-        cert_id = str(uuid.uuid4()).split("-")[0].upper()
-        cert_file = f"certificate_{os.path.basename(mountpoint.strip(':\\'))}.pdf"
-        c = canvas.Canvas(cert_file, pagesize=A4)
-        width, height = A4
+        # PDF certificate creation & signing
+        try:
+            unique_id = uuid.uuid4().hex
+            cert_file_unsigned = os.path.join(CERT_DIR, f"certificate_unsigned_{unique_id}.pdf")
+            cert_file_signed = os.path.join(CERT_DIR, f"certificate_signed_{unique_id}.pdf")
 
-        # Watermark
-        c.saveState()
-        c.setFont("Helvetica-Bold", 80)
-        c.setFillColorRGB(0.9, 0.9, 0.9, alpha=0.3)
-        c.translate(width/2, height/2)
-        c.rotate(45)
-        c.drawCentredString(0, 0, "WipeX")
-        c.restoreState()
+            # Create certificate PDF
+            c = canvas.Canvas(cert_file_unsigned, pagesize=A4)
+            width, height = A4
 
-        # Certificate Title & Aadhaar
-        c.setFont("Helvetica-Bold", 24)
-        c.setFillColor(colors.darkblue)
-        c.drawCentredString(width / 2, height - 40*mm, "Data Wiping Certificate")
+            c.saveState()
+            c.setFont("Helvetica-Bold", 80)
+            c.setFillColorRGB(0.9, 0.9, 0.9, alpha=0.3)
+            c.translate(width/2, height/2)
+            c.rotate(45)
+            c.drawCentredString(0, 0, "WipeX")
+            c.restoreState()
 
-        c.setFont("Helvetica-Bold", 10)
-        c.setFillColor(colors.black)
-        c.drawRightString(width - 20*mm, height - 20*mm, f"Certificate ID: {cert_id}")
+            # Certificate text
+            c.setFont("Helvetica-Bold", 24)
+            c.setFillColor(colors.darkblue)
+            c.drawCentredString(width / 2, height - 40*mm, "Data Wiping Certificate")
+            c.setFont("Helvetica", 12)
+            info_y = height - 60*mm
+            line_height = 16
+            masked_aadhaar = aadhaar[:4] + "XXXX" + aadhaar[-4:] if len(aadhaar) == 12 else aadhaar
+            c.drawString(25*mm, info_y, f"Wipe Performed By (Aadhaar): {masked_aadhaar}")
+            info_y -= line_height
+            c.setFont("Helvetica-Bold", 13)
+            c.drawString(25*mm, info_y - 8, "Erasure Results:")
+            info_y -= line_height * 2
+            c.setFont("Helvetica-Bold", 12)
+            c.setFillColor(colors.darkblue)
+            c.drawString(25*mm, info_y, f"Device: {mountpoint}")
+            info_y -= line_height
+            c.setFont("Helvetica", 11)
+            c.setFillColor(colors.black)
+            c.drawString(25*mm, info_y, f"Start Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            info_y -= line_height
+            c.drawString(25*mm, info_y, f"End Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            info_y -= line_height
+            c.drawString(25*mm, info_y, f"Method: NIST 800-88 Purge - Multi pass overwriting")
+            info_y -= line_height
+            c.drawString(25*mm, info_y, f"Erasure Rounds: {passes}")
+            info_y -= line_height
+            c.drawString(25*mm, info_y, "Status: Erased")
+            info_y -= line_height
+            c.drawString(25*mm, info_y, "Information: Device wiped successfully.")
+            info_y -= line_height
+            c.setFillColor(colors.red)
+            c.setFont("Helvetica-Oblique", 10)
+            c.drawString(25*mm, info_y, "Note: This data wipe is permanent and non-recoverable.")
 
-        info_y = height - 60*mm
-        line_height = 16
-        masked_aadhaar = aadhaar[:4] + "XXXX" + aadhaar[-4:] if len(aadhaar) == 12 else aadhaar
-        c.setFont("Helvetica", 12)
-        c.drawString(25*mm, info_y, f"Wipe Performed By (Aadhaar): {masked_aadhaar}")
-        info_y -= line_height
-        c.drawString(25*mm, info_y, "Erasure Results:")
-        info_y -= line_height*2
+            # QR code
+            qr_data = f"http://127.0.0.1:5000/certificate/{os.path.basename(cert_file_signed)}"
+            qr_img = qrcode.make(qr_data)
+            buf = BytesIO()
+            qr_img.save(buf, format="PNG")
+            buf.seek(0)
+            qr_reader = ImageReader(buf)
+            c.drawImage(qr_reader, width - 60*mm, height - 100*mm, 50*mm, 50*mm)
+            c.setFillColor(colors.darkgrey)
+            c.setFont("Helvetica", 10)
+            c.drawCentredString(width / 2, 15*mm, "Verified by WipeX Secure Wiping System")
+            c.showPage()
+            c.save()
 
-        c.setFont("Helvetica-Bold", 12)
-        c.setFillColor(colors.darkblue)
-        c.drawString(25*mm, info_y, f"Device: {mountpoint}")
-        info_y -= line_height
+            # Sign PDF (tamper-proof)
+            sign_pdf(cert_file_unsigned, cert_file_signed)
+            if os.path.exists(cert_file_unsigned):
+                os.remove(cert_file_unsigned)
 
-        c.setFont("Helvetica", 11)
-        c.setFillColor(colors.black)
-        c.drawString(25*mm, info_y, f"Start Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        info_y -= line_height
-        c.drawString(25*mm, info_y, f"End Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        info_y -= line_height
-        c.drawString(25*mm, info_y, "Duration: 00:04:29")
-        info_y -= line_height
-        c.drawString(25*mm, info_y, "Method: NIST 800-88 Purge - Multi pass overwriting")
-        info_y -= line_height
-        c.drawString(25*mm, info_y, f"Erasure Rounds: {passes} (multi-pass overwrite)")
-        info_y -= line_height
-        c.drawString(25*mm, info_y, "Status: Erased")
-        info_y -= line_height
-        c.drawString(25*mm, info_y, "Information: Device wiped successfully.")
-        info_y -= line_height
+            yield f"data: {json.dumps({
+                'progress': 100,
+                'certificate': os.path.basename(cert_file_signed),
+                'done': True
+            })}\n\n"
 
-        # Warning
-        c.setFillColor(colors.red)
-        c.setFont("Helvetica-Oblique", 10)
-        c.drawString(25*mm, info_y, "Note: This data wipe is permanent and non-recoverable.")
-
-        # QR code
-        qr_data = f"http://127.0.0.1:5000/certificate/{cert_file}"
-        qr_img = qrcode.make(qr_data)
-        buf = BytesIO()
-        qr_img.save(buf, format="PNG")
-        buf.seek(0)
-        qr_reader = ImageReader(buf)
-        c.drawImage(qr_reader, width - 60*mm, height - 100*mm, 50*mm, 50*mm)
-
-        c.setFillColor(colors.darkgrey)
-        c.setFont("Helvetica", 10)
-        c.drawCentredString(width / 2, 15*mm, "Verified by WipeX Secure Wiping System")
-
-        c.showPage()
-        c.save()
-
-        yield f"data: {json.dumps({'progress': 100, 'certificate': cert_file, 'certificate_id': cert_id, 'done': True})}\n\n"
+        except Exception as e:
+            print("[ERROR] PDF signing failed:", e)
+            yield f"data: {json.dumps({
+                'progress': 100,
+                'certificate_error': str(e),
+                'done': True
+            })}\n\n"
 
     return Response(generate(), mimetype="text/event-stream")
 
-# ------------------------------
-# Certificate Download
-# ------------------------------
+# ------------------------------ Download Certificate ------------------------------
 @app.route("/certificate/<name>", methods=["GET"])
 def download_certificate(name):
-    if not os.path.exists(name):
+    filepath = os.path.join(CERT_DIR, name)
+    if not os.path.exists(filepath):
         return jsonify({"status": "error", "message": "Certificate not found"}), 404
-    return send_file(name, as_attachment=True)
+    return send_file(filepath, as_attachment=True)
 
-# ------------------------------
-# Run Flask
-# ------------------------------
+# ------------------------------ Run Flask ------------------------------
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)
-
