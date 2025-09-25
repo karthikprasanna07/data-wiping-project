@@ -17,6 +17,7 @@ import qrcode
 from io import BytesIO
 import uuid
 import random
+import shutil
 
 # ------------------------------ PDF Signing ------------------------------
 from pyhanko.sign import signers
@@ -56,30 +57,38 @@ CORS(app, supports_credentials=True)
 otp_store = {}
 
 # ------------------------------ Device Detection ------------------------------
+# ------------------------------ Device Detection ------------------------------
+import shutil # Add this import at the top
+
 def detect_all_devices():
     devices = []
-    system = platform.system()
+    # Use psutil.disk_partitions to get all partitions
     for part in psutil.disk_partitions(all=False):
-        devices.append({
-            "device": part.device,
-            "mountpoint": part.mountpoint,
-            "fstype": part.fstype,
-            "opts": part.opts
-        })
-    if system == "Windows":
-        for letter in string.ascii_uppercase:
-            mountpoint = letter + ":\\"
-            if mountpoint not in [d['mountpoint'] for d in devices]:
-                drive_type = windll.kernel32.GetDriveTypeW(mountpoint)
-                if drive_type in [2, 3]:
-                    devices.append({
-                        "device": letter + ":",
-                        "mountpoint": mountpoint,
-                        "fstype": "Unknown",
-                        "opts": "removable" if drive_type == 2 else "fixed"
-                    })
+        try:
+            # Use shutil.disk_usage to get total, used, and free space
+            usage = shutil.disk_usage(part.mountpoint)
+            total_size_gb = round(usage.total / (1024**3), 2)
+            used_space_gb = round(usage.used / (1024**3), 2) # Get used space
+            devices.append({
+                "device": part.device,
+                "mountpoint": part.mountpoint,
+                "fstype": part.fstype,
+                "opts": part.opts,
+                "size": f"{total_size_gb} GB",
+                "used": f"{used_space_gb} GB" # Add the used space field here
+            })
+        except Exception as e:
+            # Handle cases where disk usage is not available (e.g., system drives)
+            print(f"Could not get usage for {part.mountpoint}: {e}")
+            devices.append({
+                "device": part.device,
+                "mountpoint": part.mountpoint,
+                "fstype": part.fstype,
+                "opts": part.opts,
+                "size": "N/A",
+                "used": "N/A"
+            })
     return devices
-
 # ------------------------------ Secure File Wipe ------------------------------
 def wipe_file(path, passes=3, chunk_size=4*1024*1024):
     try:
@@ -264,12 +273,39 @@ def wipe_stream():
 
 # ------------------------------ Download Certificate ------------------------------
 @app.route("/certificate/<name>", methods=["GET"])
+# app.py
+
+# ... (rest of your imports and code) ...
+
+# ------------------------------ Download Certificate ------------------------------
+@app.route("/certificate/<name>", methods=["GET"])
 def download_certificate(name):
     filepath = os.path.join(CERT_DIR, name)
     if not os.path.exists(filepath):
         return jsonify({"status": "error", "message": "Certificate not found"}), 404
+
+    # Check for the 'format' query parameter
+    requested_format = request.args.get("format")
+
+    if requested_format == "json":
+        # Generate the JSON response
+        cert_data = {
+            "device": "Device Placeholder",  # You'll need to pass this from the wipe stream
+            "mountpoint": "Mountpoint Placeholder", # You'll need to pass this from the wipe stream
+            "wipe_date": datetime.datetime.now().isoformat(),
+            "status": "Erased",
+            "method": "NIST 800-88 Purge - Multi pass overwriting",
+            "certificate_file": name
+        }
+        response = jsonify(cert_data)
+        response.headers['Content-Disposition'] = f'attachment; filename="{os.path.splitext(name)[0]}.json"'
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    
+    # Default to downloading the PDF file
     return send_file(filepath, as_attachment=True)
 
+# ... (rest of your code) ...
 # ------------------------------ Run Flask ------------------------------
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)
