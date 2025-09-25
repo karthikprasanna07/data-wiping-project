@@ -84,7 +84,7 @@ function App() {
   };
 
   return (
-    <Box className="app-container">
+    <Box className="app-container" sx={{ fontFamily: '"Poppins", sans-serif' }}>
       {/* Top Bar */}
       <AppBar position="static" className="topbar">
         <Toolbar>
@@ -94,7 +94,7 @@ function App() {
               alt="logo"
               style={{ height: "50px", marginRight: "8px" }}
             />
-            <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" sx={{ flexGrow: 1, fontFamily: '"Poppins", sans-serif' }}>
               WipeX
             </Typography>
           </Box>
@@ -107,28 +107,60 @@ function App() {
       {/* Device list OR progress */}
       {!wipingDevices ? (
         <Box mt={4} className="device-list">
-          <Typography variant="h6">Select device(s) to wipe:</Typography>
+          <Typography variant="h6" sx={{ mb: 2, color: '#b71c1c', fontFamily: '"Poppins", sans-serif' }}>Select device(s):</Typography>
 
-          {devices.length === 0 && <Typography>No devices detected</Typography>}
-
-          {devices.map((d, idx) => (
-            <Box
-              key={idx}
-              className="device-item"
-              onClick={() => handleCheckbox(d.mountpoint)} // row click toggles
-              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-            >
-              <Typography>
-                {d.device} → Mounted at {d.mountpoint} ({d.fstype})
-              </Typography>
-              <Checkbox
-                checked={selectedDevices.includes(d.mountpoint)}
-                onChange={(e) => handleCheckbox(d.mountpoint)}
-                onClick={(e) => e.stopPropagation()} // prevents double toggle when clicking checkbox
-              />
+          {devices.length === 0 ? (
+            <Typography sx={{ color: '#d32f2f', fontFamily: '"Poppins", sans-serif' }}>No devices detected</Typography>
+          ) : (
+            <Box sx={{ overflowX: "auto" }}>
+              <table style={{
+                width: "100%",
+                borderCollapse: "separate",
+                borderSpacing: "0 10px"
+              }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #b71c1c" }}>
+                    <th style={{ textAlign: "left", padding: "12px", paddingLeft: "24px", color: '#424242', fontFamily: '"Poppins", sans-serif' }}>Device Name</th>
+                    <th style={{ textAlign: "center", padding: "12px", color: '#424242', fontFamily: '"Poppins", sans-serif' }}>Mount Point</th>
+                    <th style={{ textAlign: "center", padding: "12px", color: '#424242', fontFamily: '"Poppins", sans-serif' }}>File System</th>
+                    <th style={{ textAlign: "center", padding: "12px", color: '#424242', fontFamily: '"Poppins", sans-serif' }}>Total Size</th>
+                    <th style={{ textAlign: "center", padding: "12px", color: '#424242', fontFamily: '"Poppins", sans-serif' }}>Occupied Space</th>
+                    <th style={{ textAlign: "center", padding: "12px", color: '#424242', fontFamily: '"Poppins", sans-serif' }}>Select</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {devices.map((d, idx) => {
+                    return (
+                      <tr
+                        key={idx}
+                        style={{
+                          backgroundColor: selectedDevices.includes(d.mountpoint) ? "#ffebee" : "transparent",
+                          cursor: "pointer",
+                          transition: 'background-color 0.3s ease',
+                          borderRadius: '4px'
+                        }}
+                        onClick={() => handleCheckbox(d.mountpoint)}
+                      >
+                        <td style={{ textAlign: "left", padding: "12px", paddingLeft: "24px", borderTop: '1px solid #fce4ec', borderBottom: '1px solid #fce4ec', fontFamily: '"Poppins", sans-serif' }}>{d.device}</td>
+                        <td style={{ textAlign: "center", padding: "12px", borderTop: '1px solid #fce4ec', borderBottom: '1px solid #fce4ec', fontFamily: '"Poppins", sans-serif' }}>{d.mountpoint}</td>
+                        <td style={{ textAlign: "center", padding: "12px", borderTop: '1px solid #fce4ec', borderBottom: '1px solid #fce4ec', fontFamily: '"Poppins", sans-serif' }}>{d.fstype}</td>
+                        <td style={{ textAlign: "center", padding: "12px", borderTop: '1px solid #fce4ec', borderBottom: '1px solid #fce4ec', fontFamily: '"Poppins", sans-serif' }}>{d.size}</td>
+                        <td style={{ textAlign: "center", padding: "12px", borderTop: '1px solid #fce4ec', borderBottom: '1px solid #fce4ec', fontFamily: '"Poppins", sans-serif' }}>{d.used}</td>
+                        <td style={{ textAlign: "center", padding: "12px", borderTop: '1px solid #fce4ec', borderBottom: '1px solid #fce4ec', fontFamily: '"Poppins", sans-serif' }}>
+                          <Checkbox
+                            checked={selectedDevices.includes(d.mountpoint)}
+                            onChange={() => handleCheckbox(d.mountpoint)}
+                            onClick={(e) => e.stopPropagation()}
+                            sx={{ color: '#d32f2f', '&.Mui-checked': { color: '#b71c1c' } }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </Box>
-          ))}
-
+          )}
         </Box>
       ) : (
         <WipeProgress devices={wipingDevices} />
@@ -141,35 +173,34 @@ function App() {
           color="error"
           onClick={handleOpenWarning}
           className="wipe-button"
+          sx={{ fontFamily: '"Poppins", sans-serif' }}
         >
           Wipe
         </Button>
       )}
 
       {/* Warning Dialog */}
-      {/* Warning Dialog */}
       <Dialog open={openWarning} onClose={() => setOpenWarning(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>⚠️ Confirm Data Wipe</DialogTitle>
-        <DialogContent>
-          <Alert severity="error" sx={{ mb: 2 }}>
+        <DialogTitle sx={{ fontFamily: '"Poppins", sans-serif' }}>⚠️ Confirm Data Wipe</DialogTitle>
+        <DialogContent sx={{ fontFamily: '"Poppins", sans-serif' }}>
+          <Alert severity="error" sx={{ mb: 2, fontFamily: '"Poppins", sans-serif' }}>
             Warning: This action is <b>permanent</b>. All data on the selected
             device(s) will be <b>unrecoverable</b>.
           </Alert>
-          {/* List of selected devices */}
-          {/* Styled list of selected devices */}
           {selectedDevices.length > 0 && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+            <Box sx={{ mb: 2, fontFamily: '"Poppins", sans-serif' }}>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold', fontFamily: '"Poppins", sans-serif' }}>
                 Devices selected for wiping:
               </Typography>
               <Box
                 sx={{
-                  maxHeight: 150,      // limits height if too many devices
-                  overflowY: 'auto',   // adds vertical scroll if needed
-                  border: '1px solid #f44336', // red border to match warning
+                  maxHeight: 150,
+                  overflowY: 'auto',
+                  border: '1px solid #f44336',
                   borderRadius: 1,
                   p: 1,
-                  backgroundColor: '#ffebee', // light red background
+                  backgroundColor: '#ffebee',
+                  fontFamily: '"Poppins", sans-serif'
                 }}
               >
                 {selectedDevices.map((mountpoint, idx) => {
@@ -178,7 +209,7 @@ function App() {
                     <Typography
                       key={idx}
                       variant="body2"
-                      sx={{ mb: 0.5, fontFamily: 'monospace' }}
+                      sx={{ mb: 0.5, fontFamily: '"Poppins", sans-serif' }}
                     >
                       {device ? `${device.device} → Mounted at ${device.mountpoint} (${device.fstype})` : mountpoint}
                     </Typography>
@@ -196,7 +227,7 @@ function App() {
                 onChange={(e) => setConfirmed(e.target.checked)}
               />
             }
-            label="I understand that this action cannot be undone"
+            label={<Typography sx={{ fontFamily: '"Poppins", sans-serif' }}>I understand that this action cannot be undone</Typography>}
           />
 
           {/* Step 2: Aadhaar Input + Get OTP */}
@@ -208,10 +239,11 @@ function App() {
                 fullWidth
                 value={aadhar}
                 onChange={(e) => setAadhar(e.target.value)}
+                sx={{ fontFamily: '"Poppins", sans-serif' }}
               />
               <Button
                 variant="contained"
-                sx={{ mt: 1 }}
+                sx={{ mt: 1, fontFamily: '"Poppins", sans-serif' }}
                 onClick={handleSendOtp}
               >
                 Get OTP
@@ -228,10 +260,11 @@ function App() {
                 fullWidth
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
+                sx={{ fontFamily: '"Poppins", sans-serif' }}
               />
               <Button
                 variant="contained"
-                sx={{ mt: 1 }}
+                sx={{ mt: 1, fontFamily: '"Poppins", sans-serif' }}
                 onClick={handleVerifyOtp}
               >
                 Verify OTP
@@ -246,6 +279,7 @@ function App() {
                 variant="contained"
                 color="error"
                 onClick={handleProceedWipe}
+                sx={{ fontFamily: '"Poppins", sans-serif' }}
               >
                 Proceed Wipe
               </Button>
@@ -253,7 +287,7 @@ function App() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenWarning(false)}>Cancel</Button>
+          <Button onClick={() => setOpenWarning(false)} sx={{ fontFamily: '"Poppins", sans-serif' }}>Cancel</Button>
         </DialogActions>
       </Dialog>
 
@@ -267,9 +301,10 @@ function App() {
           left: 0,
           width: "100%",
           textAlign: "center",
+          fontFamily: '"Poppins", sans-serif'
         }}
       >
-        <Typography variant="body2">© 2025 WipeX Prototype</Typography>
+        <Typography variant="body2" sx={{ fontFamily: '"Poppins", sans-serif' }}>© 2025 WipeX Prototype</Typography>
       </Box>
     </Box>
   );
