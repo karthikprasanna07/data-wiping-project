@@ -8,6 +8,9 @@ function WipeProgress({ devices }) {
   const [completedDevices, setCompletedDevices] = useState([]);
   const [eta, setEta] = useState(null); // ETA state
 
+  // Font family applied here to the root box
+  const fontStyle = { fontFamily: '"Poppins", sans-serif' };
+
   useEffect(() => {
     if (currentIndex >= devices.length) return;
 
@@ -48,34 +51,57 @@ function WipeProgress({ devices }) {
 
   if (currentIndex >= devices.length) {
     return (
-      <Box className="wipe-progress-container">
-        <Typography variant="h5">All selected devices wiped!</Typography>
+      <Box className="wipe-progress-container" sx={fontStyle}>
+        <Typography variant="h5" sx={fontStyle}>All selected devices wiped!</Typography>
         {completedDevices.map((d, idx) => (
-          <Button
-            key={idx}
-            variant="contained"
-            color={d.certificate ? "success" : "error"}
-            href={d.certificate ? `http://127.0.0.1:5000/certificate/${d.certificate}` : "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            disabled={!d.certificate}
-            sx={{ mt: 1, mr: 1 }}
-          >
-            {d.certificate
-              ? `Download Certificate for ${d.device}`
-              : `Certificate Failed for ${d.device}`}
-          </Button>
+          <Box key={idx} sx={{ mt: 1 }}>
+            <Button
+              variant="contained"
+              color="success"
+              href={
+                d.certificate
+                  ? `http://127.0.0.1:5000/certificate/${d.certificate}?format=pdf`
+                  : "#"
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              disabled={!d.certificate}
+              sx={{ mr: 1, ...fontStyle }}
+            >
+              {d.certificate
+                ? `Download PDF for ${d.device}`
+                : `PDF Failed for ${d.device}`}
+            </Button>
+
+            <Button
+              variant="contained"
+              color="primary"
+              href={
+                d.certificate
+                  ? `http://127.0.0.1:5000/certificate/${d.certificate}?format=json`
+                  : "#"
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              disabled={!d.certificate}
+              sx={fontStyle}
+            >
+              {d.certificate
+                ? `Download JSON for ${d.device}`
+                : `JSON Failed for ${d.device}`}
+            </Button>
+          </Box>
         ))}
       </Box>
     );
   }
 
   return (
-    <Box className="wipe-progress-container">
-      <Typography variant="h6">Wiping device: {devices[currentIndex]}</Typography>
+    <Box className="wipe-progress-container" sx={fontStyle}>
+      <Typography variant="h6" sx={fontStyle}>Wiping device: {devices[currentIndex]}</Typography>
       <CircularProgress variant="determinate" value={progress} size={100} />
-      <Typography variant="h6" mt={2}>{progress}%</Typography>
-      <Typography variant="h6" mt={1}>
+      <Typography variant="h6" mt={2} sx={fontStyle}>{progress}%</Typography>
+      <Typography variant="h6" mt={1} sx={fontStyle}>
         {eta !== null ? `ETA: ${Math.floor(eta / 60)}m ${Math.ceil(eta % 60)}s` : ""}
       </Typography>
     </Box>
